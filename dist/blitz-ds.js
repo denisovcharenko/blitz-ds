@@ -1128,4 +1128,12 @@ update();
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
+(function () {
+var y = String(new Date().getFullYear());
+document.querySelectorAll('.footer .capptalize-aa').forEach(function (el) {
+if (el.children.length) return;
+var t = el.textContent, n = t.replace(/(©\s*)\d{4}/, '$1' + y);
+if (n !== t) el.textContent = n;
+});
+})();
 });
