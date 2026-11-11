@@ -497,7 +497,7 @@ window.addEventListener('popstate', function () { if (panel) close(false); });
 })();
 (function () {
 function run() {
-if (document.querySelector('.section-hero') || !document.querySelector('link[href*="inner.css"]')) return; // home has the scale already
+if (document.querySelector('.section-hero') || ![].some.call(document.querySelectorAll('link[href*="inner.css"], style'), function (n) { return n.tagName === 'LINK' || n.textContent.indexOf('inner.css') > -1; })) return; // home has the scale already
 if (!window.matchMedia('(min-width: 992px)').matches) return;
 var els = document.querySelectorAll('.main-wrapper *');
 var picks = [];
@@ -521,7 +521,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 })();
 (function () {
 function run() {
-if (document.querySelector('.section-hero') || !document.querySelector('link[href*="inner.css"]')) return;
+if (document.querySelector('.section-hero') || ![].some.call(document.querySelectorAll('link[href*="inner.css"], style'), function (n) { return n.tagName === 'LINK' || n.textContent.indexOf('inner.css') > -1; })) return;
 if (!window.matchMedia('(min-width: 992px)').matches) return;
 var secs = document.querySelectorAll('.main-wrapper > section, .main-wrapper > .section');
 for (var i = 0; i < secs.length; i++) {
