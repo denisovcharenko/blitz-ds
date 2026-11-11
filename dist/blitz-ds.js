@@ -1136,4 +1136,65 @@ var t = el.textContent, n = t.replace(/(©\s*)\d{4}/, '$1' + y);
 if (n !== t) el.textContent = n;
 });
 })();
+(function () {
+var KEY = 'ds-shutter', N = 10, root = document.documentElement;
+var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function store(v) { try { v ? sessionStorage.setItem(KEY, '1') : sessionStorage.removeItem(KEY); } catch (e) {} }
+if (reduce) { root.classList.remove('ds-shutter-in'); store(false); return; }
+var wrap = document.createElement('div');
+wrap.className = 'ds-shutter';
+wrap.setAttribute('aria-hidden', 'true');
+for (var i = 0; i < N; i++) wrap.appendChild(document.createElement('i'));
+document.body.appendChild(wrap);
+var bands = wrap.children, busy = false;
+var OPEN = 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)';
+function page() { return document.querySelector('.main-wrapper'); }
+function reveal(g) {
+store(false);
+if (!g) { root.classList.remove('ds-shutter-in'); return; }
+g.set(bands, { yPercent: 0, clipPath: OPEN });
+wrap.classList.add('is-on');
+root.classList.remove('ds-shutter-in');
+var tl = g.timeline({ onComplete: function () { wrap.classList.remove('is-on'); g.set(page(), { clearProps: 'transform' }); } });
+tl.to(bands, { duration: .75, ease: 'expo.out', yPercent: -50, clipPath: 'polygon(0% 0%, 100% 0%, 100% -2%, 0% -2%)', stagger: { amount: .3, from: 'end' } }, 0);
+if (page()) tl.from(page(), { y: '20vh', duration: .8, ease: 'expo.out' }, 0);
+}
+function cover(g, href) {
+busy = true;
+store(true);
+wrap.classList.add('is-on');
+g.set(bands, { yPercent: 50, clipPath: 'polygon(0% 100%, 100% 100%, 100% 100%, 0% 100%)' });
+var tl = g.timeline({ onComplete: function () { location.href = href; } });
+tl.to(bands, { duration: .5, ease: 'power3.in', yPercent: 0, clipPath: OPEN, stagger: { amount: .3, from: 'end' } }, 0);
+if (page()) tl.to(page(), { y: '-15vh', duration: .75, ease: 'power3.in' }, 0);
+}
+function internal(a, e) {
+if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return false;
+if (a.target && a.target !== '_self') return false;
+if (a.hasAttribute('download') || a.closest('[data-no-transition], .w-lightbox, .w-dropdown-toggle')) return false;
+var raw = a.getAttribute('href') || '';
+if (!raw || raw.charAt(0) === '#' || /^(mailto|tel|javascript):/i.test(raw)) return false;
+var u = new URL(a.href, location.href);
+if (u.origin !== location.origin) return false;
+if (u.pathname === location.pathname && u.search === location.search) return false; // same page or an anchor on it
+return true;
+}
+(window.dsMotion || Promise.resolve(null)).then(function (g) {
+if (root.classList.contains('ds-shutter-in')) reveal(g);
+if (!g) return;
+document.addEventListener('click', function (e) {
+var a = e.target.closest && e.target.closest('a[href]');
+if (!a || busy || !internal(a, e)) return;
+e.preventDefault();
+cover(g, a.href);
+});
+});
+addEventListener('pageshow', function (e) {
+if (!e.persisted) return;
+busy = false; store(false);
+root.classList.remove('ds-shutter-in');
+wrap.classList.remove('is-on');
+if (window.gsap) gsap.set(page(), { clearProps: 'transform' });
+});
+})();
 });
