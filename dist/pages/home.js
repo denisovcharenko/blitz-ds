@@ -94,4 +94,47 @@ el.parentNode.replaceChild(a, el);
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
+(function () {
+var VIDEO = false; // 2026-11-12: home hero keeps the photo; this clip moved to the Leistungen / Services hero (leistungen.js)
+if (!VIDEO) return;
+var bg = document.querySelector('.section-hero .wrapper-hero-background');
+if (!bg || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+if (navigator.connection && navigator.connection.saveData) return;
+var own = document.querySelector('script[src*="/blitz-ds@"][src$="/blitz-ds.js"]');
+var base = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? '../img/' : own ? own.src.replace(/blitz-ds\.js$/, 'media/') : '';
+if (!base) return;
+var v = document.createElement('video');
+v.className = 'ds-hero-video'; v.muted = true; v.loop = true; v.autoplay = true; v.playsInline = true;
+v.setAttribute('muted', ''); v.setAttribute('playsinline', ''); v.setAttribute('aria-hidden', 'true');
+v.preload = 'auto'; v.poster = base + 'hero-ink-poster.jpg';
+v.innerHTML = '<source src="' + base + 'hero-ink.webm" type="video/webm"><source src="' + base + 'hero-ink.mp4" type="video/mp4">';
+v.addEventListener('playing', function () { v.classList.add('is-on'); }, { once: true });
+bg.insertBefore(v, bg.firstChild);
+var p = v.play(); if (p && p.catch) p.catch(function () {});
+if ('IntersectionObserver' in window) new IntersectionObserver(function (e) { e[0].isIntersecting ? v.play().catch(function () {}) : v.pause(); }).observe(bg);
+})();
+(function () {
+var sec = document.querySelector('.section-faq');
+if (!sec || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+if (navigator.connection && navigator.connection.saveData) return;
+var own = document.querySelector('script[src*="/blitz-ds@"][src$="/blitz-ds.js"]');
+var base = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? '../img/' : own ? own.src.replace(/blitz-ds\.js$/, 'media/') : '';
+if (!base) return;
+var wrap = document.createElement('div');
+wrap.className = 'ds-faq-bg'; wrap.setAttribute('aria-hidden', 'true');
+var v = document.createElement('video');
+v.className = 'ds-faq-video'; v.muted = true; v.loop = true; v.playsInline = true;
+v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
+v.preload = 'metadata'; v.poster = base + 'hero-video-poster.jpg';
+[['hero-video.webm', 'video/webm'], ['hero-video.mp4', 'video/mp4']].forEach(function (f) {
+var s = document.createElement('source'); s.src = base + f[0]; s.type = f[1]; v.appendChild(s);
+});
+v.addEventListener('playing', function () { v.classList.add('is-on'); });
+wrap.appendChild(v);
+sec.insertBefore(wrap, sec.firstChild);
+sec.classList.add('ds-has-faq-video');
+new IntersectionObserver(function (es) {
+if (es[0].isIntersecting) { var p = v.play(); if (p && p.catch) p.catch(function () {}); } else v.pause();
+}, { rootMargin: '200px 0px' }).observe(sec);
+})();
 });

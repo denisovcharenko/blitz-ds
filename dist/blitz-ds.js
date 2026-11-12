@@ -319,19 +319,20 @@ bar.classList.add('ds-hdr-instant'); setVars(v); void bar.offsetWidth;
 requestAnimationFrame(function () { bar.classList.remove('ds-hdr-instant'); });
 }
 }
+function T(k, d) { var o = window.dsTune; return o && typeof o[k] === 'number' ? o[k] : d; } // local settings panel only
 function animate(compact) {
-var s = shapes();
+var s = shapes(), D = T('hdrDur', .75);
 if (!G) { setVars(vars(compact ? s.small : s.full)); return; } // CSS transition
 if (tl) tl.kill();
 tl = G.timeline({ onComplete: function () { tl = null; } });
 var items = nav ? nav.querySelectorAll('.wp-nav-menu > .wp-link-nav') : [];
 if (compact) {
 tl.to([lang, logo, nav], { autoAlpha: 0, duration: 0.22, ease: 'power1.out' }, 0)
-.to(bar, Object.assign(vars(s.small), { duration: 0.75, ease: 'emphasized' }), 0.04)
+.to(bar, Object.assign(vars(s.small), { duration: D, ease: 'emphasized' }), 0.04)
 .to(btn, { autoAlpha: 1, duration: 0.3, ease: 'power2.out' }, 0.38);
 } else {
 tl.to(btn, { autoAlpha: 0, duration: 0.14, ease: 'power1.out' }, 0)
-.to(bar, Object.assign(vars(s.full), { duration: 0.75, ease: 'emphasized' }), 0)
+.to(bar, Object.assign(vars(s.full), { duration: D, ease: 'emphasized' }), 0)
 .to(logo, { autoAlpha: 1, duration: 0.4, ease: 'power2.out' }, 0.18)
 .set(nav, { autoAlpha: 1 }, 0.22)
 .fromTo(items, { autoAlpha: 0, y: 4 }, { autoAlpha: 1, y: 0, duration: 0.45, stagger: 0.022, ease: 'power2.out', clearProps: 'transform' }, 0.22)
@@ -465,7 +466,7 @@ try { history.pushState({ dsPanel: href }, '', href); } catch (e) {}
 var sheet = panel.querySelector('.ds-panel__sheet'), veil = panel.querySelector('.ds-panel__veil');
 if (G) {
 G.fromTo(veil, { autoAlpha: 0 }, { autoAlpha: 1, duration: .4, ease: 'power1.out' });
-G.fromTo(sheet, { xPercent: 100 }, { xPercent: 0, duration: .75, ease: 'emphasized' });
+G.fromTo(sheet, { xPercent: 100 }, { xPercent: 0, duration: (window.dsTune && window.dsTune.sheetDur) || .75, ease: 'emphasized' });
 }
 panel.querySelector('.ds-panel__close').focus();
 }
@@ -789,7 +790,9 @@ return { cells: cells, imgs: cells.map(function (c) { return c.tagName === 'IMG'
 }).filter(function (g) { return g.cells.length; });
 if (!groups.length) return;
 var en = /^\/en(\/|$)/.test(location.pathname);
-var EASE = 'cubic-bezier(.45,0,.55,1)', DUR = 600;
+var EASE = 'cubic-bezier(.45,0,.55,1)', DUR0 = 600;
+function T(k, d) { var o = window.dsTune; return o && typeof o[k] === 'number' ? o[k] : d; } // local settings panel only
+var DUR = DUR0; document.addEventListener('ds-tune', function () { DUR = T('lbDur', DUR0); }); DUR = T('lbDur', DUR0);
 var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 var lb = document.createElement('div');
 lb.className = 'ds-lb';
@@ -1141,6 +1144,7 @@ if (n !== t) el.textContent = n;
 });
 })();
 (function () {
+function T(k, d) { var o = window.dsTune; return o && typeof o[k] === 'number' ? o[k] : d; } // local settings panel only
 var KEY = 'ds-shutter', N = 10, root = document.documentElement;
 var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 function store(v) { try { v ? sessionStorage.setItem(KEY, '1') : sessionStorage.removeItem(KEY); } catch (e) {} }
@@ -1160,8 +1164,8 @@ g.set(bands, { yPercent: 0, clipPath: OPEN });
 wrap.classList.add('is-on');
 root.classList.remove('ds-shutter-in');
 var tl = g.timeline({ onComplete: function () { wrap.classList.remove('is-on'); g.set(page(), { clearProps: 'transform' }); } });
-tl.to(bands, { duration: .75, ease: 'expo.out', yPercent: -50, clipPath: 'polygon(0% 0%, 100% 0%, 100% -2%, 0% -2%)', stagger: { amount: .3, from: 'end' } }, 0);
-if (page()) tl.from(page(), { y: '20vh', duration: .8, ease: 'expo.out' }, 0);
+tl.to(bands, { duration: T('shInDur', .75), ease: 'expo.out', yPercent: -50, clipPath: 'polygon(0% 0%, 100% 0%, 100% -2%, 0% -2%)', stagger: { amount: T('shStagger', .3), from: 'end' } }, 0);
+if (page()) tl.from(page(), { y: T('shPageIn', 20) + 'vh', duration: T('shInDur', .75) + .05, ease: 'expo.out' }, 0);
 }
 function cover(g, href) {
 busy = true;
@@ -1169,8 +1173,8 @@ store(true);
 wrap.classList.add('is-on');
 g.set(bands, { yPercent: 50, clipPath: 'polygon(0% 100%, 100% 100%, 100% 100%, 0% 100%)' });
 var tl = g.timeline({ onComplete: function () { location.href = href; } });
-tl.to(bands, { duration: .5, ease: 'power3.in', yPercent: 0, clipPath: OPEN, stagger: { amount: .3, from: 'end' } }, 0);
-if (page()) tl.to(page(), { y: '-15vh', duration: .75, ease: 'power3.in' }, 0);
+tl.to(bands, { duration: T('shOutDur', .5), ease: 'power3.in', yPercent: 0, clipPath: OPEN, stagger: { amount: T('shStagger', .3), from: 'end' } }, 0);
+if (page()) tl.to(page(), { y: -T('shPageOut', 15) + 'vh', duration: T('shOutDur', .5) + .25, ease: 'power3.in' }, 0);
 }
 function internal(a, e) {
 if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return false;
@@ -1222,7 +1226,8 @@ mo.observe(sec, { childList: true, subtree: true });
 (function () {
 var h = document.querySelector('.section.hero-shop h1');
 if (!h || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-var PX_PER_S = 75;
+function T(k, d) { var o = window.dsTune; return o && typeof o[k] === 'number' ? o[k] : d; } // local settings panel only
+var PX_PER_S = T('mqSpeed', 75);
 var box = document.createElement('div'); box.className = 'ds-mq';
 h.parentNode.insertBefore(box, h);
 function item(node) {
@@ -1243,6 +1248,7 @@ box.appendChild(list); lists.push(list);
 }
 function speed() { lists.forEach(function (x) { x.style.animationDuration = (x.offsetWidth / PX_PER_S) + 's'; }); }
 speed(); window.addEventListener('resize', speed);
+document.addEventListener('ds-tune', function () { PX_PER_S = T('mqSpeed', 75); speed(); });
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(speed);
 new IntersectionObserver(function (es) {
 es.forEach(function (e) { lists.forEach(function (x) { x.style.animationPlayState = e.isIntersecting ? 'running' : 'paused'; }); });
@@ -1298,8 +1304,9 @@ lin = clamp((y / end - p.lag) / (1 - p.lag)); t = ease(lin);
 }
 var cx, cy, w, h, r;
 if (p.arc && p.tile) {
-var cyDoc = cy1 + y, aEnd = Math.max(1, Math.min(end * .5, cyDoc - vh * 1.05));
-var ta = clamp(y / aEnd), tb = clamp((vh - cy1) / (vh * .45)); // tb: card middle from screen bottom to 55%
+var cyDoc = cy1 + y, aEnd = Math.max(vh * .3, Math.min(end * .5, cyDoc - vh * 1.05));
+var bs = Math.max(aEnd, cyDoc - vh), be = Math.max(bs + vh * .3, cyDoc - vh * .55); // card middle: screen bottom -> 55%
+var ta = clamp(y / aEnd), tb = y <= bs ? 0 : clamp((y - bs) / (be - bs));
 if (tb > 0) {
 var e = 1 - Math.pow(1 - tb, 3); // ease-out: arrives softly
 var bx = -w1 * .55, by = cy1 - T.height * .85;
@@ -1374,6 +1381,12 @@ var rows = [
 { el: stage.children[0], sign: -1, drift: 40, travel: .5, x: 0, w: 0 },
 { el: stage.children[1], sign: 1, drift: 30, travel: 1, x: 0, w: 0 }
 ];
+function T(k, d) { var o = window.dsTune; return o && typeof o[k] === 'number' ? o[k] : d; } // local settings panel only
+function tune() {
+rows[0].drift = T('hmTitleDrift', 40); rows[0].travel = T('hmTitleTravel', .5);
+rows[1].drift = T('hmGoodsDrift', 30); rows[1].travel = T('hmGoodsTravel', 1);
+WAVE_Y = T('hmWaveY', .25); PER_WAVE = T('hmPerWave', 10); WAVE_TRAVEL = T('hmWaveTravel', .25);
+}
 var WAVE_Y = .25, PER_WAVE = 10, WAVE_TRAVEL = .25, waveLen = 1, goods = [];
 function measure() {
 rows.forEach(function (r) { r.w = r.el.firstChild.offsetWidth; });
@@ -1383,7 +1396,8 @@ return { el: it, x: it.offsetLeft, w: it.offsetWidth, h: it.offsetHeight };
 var first = goods.slice(0, IDS.length), avg = first.reduce(function (a, g) { return a + g.w; }, 0) / Math.max(1, first.length);
 waveLen = Math.max(stage.offsetWidth, avg * PER_WAVE) * (innerWidth < 768 ? .75 : 1);
 }
-measure(); window.addEventListener('resize', measure);
+tune(); measure(); window.addEventListener('resize', measure);
+document.addEventListener('ds-tune', function () { tune(); measure(); });
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
 stage.querySelectorAll('img').forEach(function (im) { im.addEventListener('load', measure); });
 var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1440,6 +1454,22 @@ function update() { measure(); if (!raf) raf = requestAnimationFrame(frame); }
 window.addEventListener('scroll', update, { passive: true });
 window.addEventListener('resize', update);
 update();
+})();
+(function () {
+var cards = document.querySelectorAll('.cont-new.cards > .cont-text-card');
+if (!cards.length) return;
+function set() {
+for (var i = 0; i < cards.length; i++) {
+var c = cards[i], cs = getComputedStyle(c);
+var x = parseFloat(cs.getPropertyValue('--pat-zoom-x')) || 0, y = parseFloat(cs.getPropertyValue('--pat-zoom-y')) || 0;
+c.style.setProperty('--pat-dx', (-x / 100 * 1.4 * c.offsetWidth).toFixed(1) + 'px');
+c.style.setProperty('--pat-dy', (-y / 100 * 1.4 * c.offsetHeight).toFixed(1) + 'px');
+}
+}
+set();
+if (window.ResizeObserver) { var ro = new ResizeObserver(set); for (var j = 0; j < cards.length; j++) ro.observe(cards[j]); }
+else window.addEventListener('resize', set);
+document.addEventListener('ds-paper-update', set);
 })();
 (function () {
 var cards = document.querySelectorAll('.cont-new.cards > .cont-text-card');

@@ -38,4 +38,26 @@ window.addEventListener('resize', size);
 function start() { init(); pinRows(); }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
+(function () {
+var bg = document.querySelector('.section.hero-serv .wrapper-hero-background');
+if (!bg || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+if (navigator.connection && navigator.connection.saveData) return;
+var own = document.querySelector('script[src*="/blitz-ds@"][src$="/blitz-ds.js"]');
+var base = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? '../img/' : own ? own.src.replace(/blitz-ds\.js$/, 'media/') : '';
+if (!base) return;
+var v = document.createElement('video');
+v.className = 'ds-hero-video'; v.muted = true; v.loop = true; v.autoplay = true; v.playsInline = true;
+v.setAttribute('muted', ''); v.setAttribute('playsinline', ''); v.setAttribute('aria-hidden', 'true');
+v.preload = 'auto'; v.poster = base + 'hero-ink-poster.jpg';
+[['hero-ink.webm', 'video/webm'], ['hero-ink.mp4', 'video/mp4']].forEach(function (f) {
+var s = document.createElement('source'); s.src = base + f[0]; s.type = f[1]; v.appendChild(s);
+});
+v.addEventListener('playing', function () { v.classList.add('is-on'); }, { once: true });
+bg.insertBefore(v, bg.firstChild);
+bg.classList.add('ds-has-video');
+var p = v.play(); if (p && p.catch) p.catch(function () {});
+new IntersectionObserver(function (e) {
+if (e[0].isIntersecting) { var q = v.play(); if (q && q.catch) q.catch(function () {}); } else v.pause();
+}).observe(bg);
+})();
 });
