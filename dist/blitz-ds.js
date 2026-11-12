@@ -1225,6 +1225,18 @@ var mo = new MutationObserver(function () { if (place()) mo.disconnect(); });
 mo.observe(sec, { childList: true, subtree: true });
 })();
 (function () {
+var src = document.querySelector('.cont-new .wp-but-buy > a[href]');
+var head = src && src.closest('.cont-new').querySelector('.wp-text-sec');
+if (!head || head.querySelector('.ds-buy')) return;
+var label = src.textContent.replace(/\s+/g, ' ').trim();
+var a = document.createElement('a');
+a.className = 'button w-inline-block ds-buy'; a.href = src.getAttribute('href');
+if (src.target) a.target = src.target; a.rel = 'noopener';
+a.innerHTML = '<div class="wp-text-but"><div></div></div><div class="arrow-but"><div class="arrow"></div></div>';
+a.querySelector('.wp-text-but > div').textContent = label;
+head.appendChild(a); head.classList.add('ds-has-buy');
+})();
+(function () {
 var h = document.querySelector('.section.hero-shop h1');
 if (!h || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 function T(k, d) { var o = window.dsTune; return o && typeof o[k] === 'number' ? o[k] : d; } // local settings panel only
@@ -1247,9 +1259,21 @@ if (l) list.setAttribute('aria-hidden', 'true');
 for (var i = 0; i < 3; i++) list.appendChild(item(l === 0 && i === 0 ? h : copy()));
 box.appendChild(list); lists.push(list);
 }
-function speed() { lists.forEach(function (x) { x.style.animationDuration = (x.offsetWidth / PX_PER_S) + 's'; }); }
+function fill() {
+var guard = 0;
+while (lists[0].offsetWidth < box.offsetWidth + lists[0].lastChild.offsetWidth && guard++ < 20) {
+lists.forEach(function (x) { x.appendChild(item(copy())); });
+}
+}
+var lastW = 0;
+function speed() {
+fill();
+var w = lists[0].offsetWidth; if (!w) return;
+if (Math.abs(w - lastW) < 1 && !speed.force) return; lastW = w; speed.force = false;
+lists.forEach(function (x) { x.style.animationDuration = (w / PX_PER_S) + 's'; });
+}
 speed(); window.addEventListener('resize', speed);
-document.addEventListener('ds-tune', function () { PX_PER_S = T('mqSpeed', 75); speed(); });
+document.addEventListener('ds-tune', function () { PX_PER_S = T('mqSpeed', 75); speed.force = true; speed(); });
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(speed);
 new IntersectionObserver(function (es) {
 es.forEach(function (e) { lists.forEach(function (x) { x.style.animationPlayState = e.isIntersecting ? 'running' : 'paused'; }); });
@@ -1283,14 +1307,26 @@ return { el: im, x: p[1], y: p[2], w: p[3], r: p[4], a: p[5], tile: tile, lag: [
 }).filter(Boolean);
 if (pieces.length < P.length) { fly.innerHTML = ''; return; } // keep the flat set image
 host.appendChild(set); document.body.appendChild(fly); host.classList.add('ds-has-set');
-function ease(t) { return t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+function TN(k, d) { var o = window.dsTune; return o && typeof o[k] === 'number' ? o[k] : d; } // local settings panel only
+var ORDER = [3, 0, 1, 2]; // entrance slot per piece (P is back to front: pen, tee, bag, cap)
+pieces.forEach(function (p, i) { p.slot = ORDER[i]; p.el.style.opacity = '0'; });
+var t0 = 0, introDone = false, OX = .018, OY = -.018;
+function startIntro() { if (!t0) { t0 = performance.now() + 150; kick(); } }
+function ease(t) { return 1 - Math.pow(1 - t, 2.2); }
 function clamp(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 var raf = 0;
 function frame() {
 raf = 0;
 var S = set.getBoundingClientRect(), vh = innerHeight, y = window.scrollY;
+var k = TN('shopZoom', innerWidth < 768 ? 1.2 : 1.5);
+var scx = S.left + S.width / 2, scy = S.top + S.height / 2;
+var now = performance.now(), dur = TN('shopInDur', .4) * 1000, gap = TN('shopInStagger', .23) * 1000, pending = false;
 pieces.forEach(function (p) {
-var cx0 = S.left + p.x * S.width, cy0 = S.top + p.y * S.height, w0 = p.w * S.width;
+var cx0 = scx + (p.x - .5 + OX) * S.width * k, cy0 = scy + (p.y - .5 + OY) * S.height * k, w0 = p.w * S.width * k;
+var a = introDone ? 1 : t0 ? clamp((now - t0 - p.slot * gap) / dur) : 0;
+if (a < 1) pending = true;
+var ea = 1 - Math.pow(1 - a, 4), lift = (1 - ea) * S.height * .08, grow = .9 + .1 * ea;
+p.el.style.opacity = a >= 1 ? '' : Math.min(1, a * 1.8).toFixed(3);
 var t = 0, lin = 0, cx1 = cx0, cy1 = cy0, w1 = w0;
 if (p.tile) {
 var T = p.tile.getBoundingClientRect();
@@ -1333,12 +1369,17 @@ cx = cx0 + (cx1 - cx0) * t; cy = cy0 + (cy1 - cy0) * t; w = w0 + (w1 - w0) * t; 
 var home = t <= 0;
 p.el.style.width = w.toFixed(1) + 'px';
 p.el.style.setProperty('--t', t.toFixed(3));
-p.el.style.transform = 'translate3d(' + (cx - w / 2).toFixed(1) + 'px,' + (cy - h / 2).toFixed(1) + 'px,0) rotate(' + r.toFixed(2) + 'deg)';
+p.el.style.transform = 'translate3d(' + (cx - w / 2).toFixed(1) + 'px,' + (cy - h / 2 + lift).toFixed(1) + 'px,0) rotate(' + r.toFixed(2) + 'deg)' + (grow < 1 ? ' scale(' + grow.toFixed(4) + ')' : '');
 if (home) p.el.style.setProperty('--t', '0');
 });
+if (t0 && !pending) introDone = true;
+if (t0 && pending) kick();
 }
 function kick() { if (!raf) raf = requestAnimationFrame(frame); }
 frame();
+Promise.all(pieces.map(function (p) { return p.el.decode ? p.el.decode().catch(function () {}) : null; })).then(startIntro);
+setTimeout(startIntro, 1500);
+document.addEventListener('ds-tune', kick);
 window.addEventListener('scroll', kick, { passive: true });
 window.addEventListener('resize', kick);
 window.addEventListener('load', kick);
