@@ -1682,8 +1682,16 @@ it.appendChild(im); wrap.appendChild(it); return it;
 });
 host.appendChild(wrap);
 var state = { trailInterval: null, globalIndex: 0, last: { x: 0, y: 0 }, trailImageTimestamps: new Map(), isActive: false };
+var lastK = 1;
+function size() {
+var lo = T('trailMin', .6), hi = T('trailMax', 1.4), k;
+for (var i = 0; i < 6; i++) { k = lo + Math.random() * (hi - lo); if (Math.abs(k - lastK) > (hi - lo) * .25) break; }
+lastK = k; return k;
+}
 function activate(trailImage, x, y) {
 if (!trailImage) return;
+var k = size();
+trailImage.style.width = trailImage.style.height = (16 * k).toFixed(2) + 'em';
 var rect = trailImage.getBoundingClientRect();
 Object.assign(trailImage.style, { left: (x - rect.width / 2) + 'px', top: (y - rect.height / 2) + 'px', zIndex: state.globalIndex, display: 'block' });
 state.trailImageTimestamps.set(trailImage, Date.now());
