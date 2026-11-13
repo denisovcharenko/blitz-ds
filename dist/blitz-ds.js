@@ -480,11 +480,35 @@ root.querySelector('.ds-panel__veil').addEventListener('click', function () { cl
 root.querySelector('.ds-panel__close').addEventListener('click', function () { close(true); });
 return root;
 }
-function open(href) {
+function steps(root, href) {
+var list = [].map.call(document.querySelectorAll('.page-bl .card-blog a.button-case[href]'), function (a) { return a.getAttribute('href'); });
+var at = list.indexOf(href);
+if (at < 0 || list.length < 2) return;
+var nav = document.createElement('div');
+nav.className = 'ds-panel__nav';
+nav.innerHTML = ['prev', 'next'].map(function (d) {
+return '<button type="button" class="ds-panel__step ds-panel__step--' + d + '" aria-label="' +
+(d === 'prev' ? (en ? 'Previous article' : 'Vorheriger Artikel') : (en ? 'Next article' : 'Nächster Artikel')) + '"></button>';
+}).join('');
+root.querySelector('.ds-panel__sheet').appendChild(nav);
+var frame = root.querySelector('iframe');
+function go(d) {
+at = (at + d + list.length) % list.length;
+var next = list[at];
+root.classList.remove('is-ready'); // the frame fades out, the load handler fades the new article in
+setTimeout(function () { frame.src = next; }, 250);
+try { history.replaceState({ dsPanel: next }, '', next); } catch (e) {}
+}
+nav.querySelector('.ds-panel__step--prev').addEventListener('click', function () { go(-1); });
+nav.querySelector('.ds-panel__step--next').addEventListener('click', function () { go(1); });
+root.__dsStep = go;
+}
+function open(href, half) {
 if (panel) return;
 lastFocus = document.activeElement;
 prevTitle = document.title;
 panel = build(href);
+if (half) { panel.classList.add('ds-panel--half'); steps(panel, href); } // blog articles: half the screen, the list stays in view (user, 2026-11-13)
 document.body.appendChild(panel);
 html.classList.add('ds-panel-open');
 try { history.pushState({ dsPanel: href }, '', href); } catch (e) {}
@@ -513,11 +537,14 @@ var a = e.target.closest && e.target.closest('a[href]');
 if (!a || a.origin !== location.origin) return;
 var artist = /^(\/en)?\/(iryna|luis|natali|ulyana)$/;
 var here = location.pathname.replace(/\/+$/, '');
-if (!(/card-crew/.test(a.className) || (artist.test(a.pathname.replace(/\/+$/, '')) && a.closest('.main-wrapper') && window.self === window.top && !artist.test(here)))) return;
+if (!(/card-crew/.test(a.className) || (a.closest('.page-bl .card-blog') && window.self === window.top) || (artist.test(a.pathname.replace(/\/+$/, '')) && a.closest('.main-wrapper') && window.self === window.top && !artist.test(here)))) return;
 e.preventDefault();
-open(a.getAttribute('href'));
+open(a.getAttribute('href'), !!a.closest('.page-bl .card-blog'));
 });
-document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && panel) close(true); });
+document.addEventListener('keydown', function (e) {
+if (e.key === 'Escape' && panel) close(true);
+else if (panel && panel.__dsStep && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) panel.__dsStep(e.key === 'ArrowLeft' ? -1 : 1);
+});
 window.addEventListener('message', function (e) { if (e.origin === location.origin && e.data === 'ds-panel-close') close(true); });
 window.addEventListener('popstate', function () { if (panel) close(false); });
 })();
@@ -1089,17 +1116,25 @@ inp.addEventListener('blur', function () { if (inp.value.trim()) f.started = tru
 inp.addEventListener('input', function () { if (f.started) run(); });
 return f;
 });
-window.addEventListener('submit', function (e) {
-if (e.target !== form) return;
+var validate = function () {
 var bad = null;
 fields.forEach(function (f) { f.started = true; if (!f.run() && !bad) bad = f; });
 if (bad) {
-e.preventDefault(); e.stopImmediatePropagation();
 bad.inp.focus({ preventScroll: true });
 var r = bad.wrap.getBoundingClientRect();
 if (r.top < 120 || r.bottom > innerHeight) scrollBy({ top: r.top - innerHeight / 3, behavior: 'smooth' });
 }
+return !bad;
+};
+window.addEventListener('submit', function (e) {
+if (e.target !== form) return;
+if (!validate()) { e.preventDefault(); e.stopImmediatePropagation(); }
 }, true);
+/* Webflow keeps the submit button disabled until the Turnstile check has loaded, and a disabled
+button gets no click or submit, so the errors never showed. Pointer events still reach it. */
+var sub = form.querySelector('[type=submit]');
+if (sub) document.addEventListener('pointerup', function (e) { if (e.target === sub && sub.disabled) validate(); }, true);
+form.addEventListener('keydown', function (e) { if (e.key === 'Enter' && sub && sub.disabled && e.target.matches('input')) { e.preventDefault(); validate(); } });
 });
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
@@ -1465,7 +1500,7 @@ if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 var ITEMS = ['.grid-studio:not(:has(.card-serv.shop)) > *', '.grid-serv > .card-serv-new', '.grid-price > *',
 '.cont-process > .card-process', '.wp-im-gal', '.faq > .qestion', '.list-approach > .item-approach', '.card-top',
 '.w-dyn-item:has(> .card-blog)', '.wp-info-contact > .item-info-contact',
-'.container-crew-hero > *', '.wrapper-card-price > *', '.wrapper-card-promotion > *', '.main-contact > .contact'].join(', '); // + Home cards
+'.container-crew-hero > *', '.wrapper-card-price > *', '.wrapper-card-promotion > *', '.main-contact > .contact', '.section-contact .wrapper-contact-links'].join(', '); // + Home cards
 (window.dsMotion || Promise.resolve(null)).then(function (g) {
 if (!g) return;
 var items = [].slice.call(document.querySelectorAll(ITEMS)).filter(function (el) {
@@ -2177,5 +2212,144 @@ mounts[i].setUniforms(c.u);
 });
 });
 }).catch(function () {});
+})();
+(function () {
+if (!matchMedia('(hover: hover) and (pointer: fine)').matches || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+var SEL = '.link-nav, .link-lang, .link-contact, footer a, .footer a, a.button, a.button-case';
+function T(k, d) { var o = window.dsTune; return o && typeof o[k] === 'number' ? o[k] : d; } // local settings panel only
+var fonts = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
+Promise.all([window.dsMotion || Promise.resolve(null), fonts]).then(function (res) {
+if (!res[0] || !window.SplitText) return;
+res[0].registerPlugin(SplitText);
+var seen = new Set();
+[].slice.call(document.querySelectorAll(SEL)).forEach(function (a) {
+if (seen.has(a) || a.closest('.ds-roll, [data-split], .w-richtext, .ds-mq, .ds-hm')) return;
+seen.add(a);
+var w = document.createTreeWalker(a, NodeFilter.SHOW_TEXT, null), n, texts = [];
+while ((n = w.nextNode())) if (n.data.trim() && !n.parentNode.closest('svg, script, style, .ds-slash')) texts.push(n);
+if (!texts.length || a.textContent.trim().length > 48) return; // long text links (addresses, cards) keep their own look
+texts.forEach(function (t) {
+var span = document.createElement('span'); span.className = 'ds-roll';
+t.parentNode.insertBefore(span, t); span.appendChild(t);
+SplitText.create(span, { type: 'words, chars', wordsClass: 'ds-roll__w', charsClass: 'ds-roll__c' });
+if (getComputedStyle(span).textTransform === 'capitalize') span.classList.add('ds-roll--cap');
+var cs = span.querySelectorAll('.ds-roll__c');
+for (var i = 0; i < cs.length; i++) cs[i].style.setProperty('--i', i);
+var lh = parseFloat(getComputedStyle(span).lineHeight);
+if (!lh) lh = parseFloat(getComputedStyle(span).fontSize) * 1.2;
+span.style.setProperty('--roll', lh.toFixed(2) + 'px');
+});
+a.classList.add('ds-roll-link');
+});
+document.documentElement.style.setProperty('--roll-dur', T('rollDur', .5) + 's');
+document.documentElement.style.setProperty('--roll-stagger', T('rollStagger', .015) + 's');
+});
+})();
+(function () {
+if (!document.querySelector('.page-bl .card-blog')) return;
+var en = /^\/en(\/|$)/.test(location.pathname);
+function dates() {
+document.querySelectorAll('.page-bl .ds-blog-date:not([data-ds-d])').forEach(function (el) {
+var t = Date.parse(el.textContent.trim());
+el.setAttribute('data-ds-d', '1');
+if (isNaN(t)) return;
+var d = new Date(t);
+el.textContent = d.toLocaleDateString(en ? 'en-US' : 'de-DE', { day: 'numeric', month: 'long', year: 'numeric' });
+});
+}
+dates();
+document.addEventListener('DOMContentLoaded', dates);
+window.addEventListener('load', dates);
+var list = document.querySelector('.page-bl .cms-list') || document.querySelector('.page-bl');
+var local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+var src = local ? '/_ds/paper-shaders.js' : 'https://cdn.jsdelivr.net/npm/@paper-design/shaders@0.0.82/+esm';
+import(src).then(function (P) {
+var noise = P.getShaderNoiseTexture();
+return (noise.decode ? noise.decode() : Promise.resolve()).then(function () {
+var box = document.createElement('div');
+box.style.cssText = 'position:fixed;left:-3000px;top:0;width:900px;height:560px;pointer-events:none';
+document.body.appendChild(box);
+var C = P.getShaderColorFromString;
+var m = new P.ShaderMount(box, P.paperTextureFragmentShader, {
+u_isImage: false, u_imageAspectRatio: 900 / 560, u_blending: 0, u_distortion: 0, u_clip: false,
+u_colorBack: C('#00000000'), u_colorPaper: C('#ffffff03'), u_colorShadow: C('#b3b3b3b3'), u_noiseTexture: noise,
+u_fit: P.ShaderFitOptions.cover, u_rotation: 0, u_offsetX: 0, u_offsetY: 0, u_originX: .5, u_originY: .5, u_worldWidth: 0, u_worldHeight: 0,
+u_scale: 2.4, u_angle: 360, u_seed: 806, u_roughness: .9, u_roughnessSize: .13, u_roughnessRows: .25, u_fiber: .72, u_fiberSize: .93,
+u_folds: .72, u_foldSizeX: .39, u_foldSizeY: .7, u_foldOffsetX: .4, u_foldOffsetY: .78, u_wrinkles: .76, u_wrinkleSize: .36,
+u_crumples: 0, u_crumpleCount: 11, u_drops: .68
+}, { preserveDrawingBuffer: true, premultipliedAlpha: false }, 0, 0);
+return new Promise(function (r) { setTimeout(r, 120); }).then(function () {
+var cv = box.querySelector('canvas');
+if (!cv) { box.remove(); return; }
+var sm = document.createElement('canvas'); sm.width = 900; sm.height = 560;
+sm.getContext('2d').drawImage(cv, 0, 0, sm.width, sm.height);
+try { m.dispose && m.dispose(); } catch (e) {}
+box.remove();
+sm.toBlob(function (blob) {
+if (!blob || blob.size < 1000) return;
+var st = document.createElement('style');
+st.textContent = '.page-bl .cms-list{--blog-paper:url("' + URL.createObjectURL(blob) + '")}';
+document.head.appendChild(st);
+list.classList.add('has-paper');
+}, 'image/webp', .85);
+});
+});
+}).catch(function () {});
+})();
+(function () {
+if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+var host = null;
+try { if (window.self !== window.top && window.parent.__dsDot) host = window.parent; } catch (e) {}
+if (host) {
+window.addEventListener('mousemove', function (e) {
+var f = window.frameElement, r = f && f.getBoundingClientRect();
+if (r) host.__dsDot(e.clientX + r.left, e.clientY + r.top);
+}, { passive: true });
+return;
+}
+if (!window.dsMotion) return;
+var T = function (k, d) { var v = window.dsTune && window.dsTune[k]; return v == null || isNaN(v) ? d : +v; };
+var en = /^\/en(\/|$)/.test(location.pathname);
+window.__dsDot = function () {};
+window.dsMotion.then(function (gsap) {
+var dot = document.createElement('div');
+dot.className = 'ds-dot';
+dot.setAttribute('aria-hidden', 'true');
+dot.innerHTML = '<span class="ds-dot__t">' + (en ? 'Close' : 'Schließen') + '</span>';
+document.body.appendChild(dot);
+document.documentElement.classList.add('ds-has-dot');
+gsap.set(dot, { xPercent: -50, yPercent: -50 });
+var dur = T('cursorDur', .6);
+var xTo = gsap.quickTo(dot, 'x', { duration: dur, ease: 'power3' });
+var yTo = gsap.quickTo(dot, 'y', { duration: dur, ease: 'power3' });
+var seen = false;
+function move(x, y, close) {
+if (!seen) { seen = true; gsap.set(dot, { x: x, y: y }); }
+xTo(x); yTo(y);
+dot.classList.toggle('is-close', close);
+dot.classList.add('is-in');
+}
+window.addEventListener('mousemove', function (e) {
+var t = e.target;
+move(e.clientX, e.clientY, !!(t.closest && t.closest('.ds-panel__veil')));
+}, { passive: true });
+window.__dsDot = function (x, y) { move(x, y, false); }; // moves inside the sheet's article
+document.addEventListener('mouseout', function (e) { if (!e.relatedTarget) dot.classList.remove('is-in', 'is-close'); });
+document.addEventListener('ds-tune', function () { dur = T('cursorDur', .6); xTo = gsap.quickTo(dot, 'x', { duration: dur, ease: 'power3' }); yTo = gsap.quickTo(dot, 'y', { duration: dur, ease: 'power3' }); });
+});
+})();
+/* Price table: wrap "80 €" of "ab 80 €" in a span so CSS can colour it (text itself unchanged) */
+(function () {
+function run() {
+document.querySelectorAll('.grid-price .text-color-red').forEach(function (el) {
+if (el.querySelector('.ds-price-n') || el.children.length) return;
+var t = el.textContent, m = t.match(/\d[\d.,\s]*\d|\d/);
+if (!m) return;
+var a = t.slice(0, m.index), b = t.slice(m.index + m[0].length), n = document.createElement('span');
+n.className = 'ds-price-n'; n.textContent = m[0] + b; /* number and currency red, "ab" white */
+el.textContent = ''; el.append(a, n);
+});
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();
 })();
 });
