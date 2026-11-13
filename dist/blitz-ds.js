@@ -1596,7 +1596,7 @@ var raf = 0;
 function frame() {
 raf = 0;
 var S = set.getBoundingClientRect(), vh = innerHeight, y = window.scrollY;
-var k = TN('shopZoom', innerWidth < 768 ? 1.2 : 1.5);
+var k = TN('shopZoom', innerWidth < 768 ? 1.2 : 1.43);
 var scx = S.left + S.width / 2, scy = S.top + S.height / 2;
 var now = performance.now(), dur = TN('shopInDur', .4) * 1000, gap = TN('shopInStagger', .23) * 1000, pending = false;
 pieces.forEach(function (p) {
@@ -1684,7 +1684,7 @@ host.appendChild(wrap);
 var state = { trailInterval: null, globalIndex: 0, last: { x: 0, y: 0 }, trailImageTimestamps: new Map(), isActive: false };
 var lastK = 1;
 function size() {
-var lo = T('trailMin', .6), hi = T('trailMax', 1.4), k;
+var lo = T('trailMin', .45), hi = T('trailMax', 1.5), k;
 for (var i = 0; i < 6; i++) { k = lo + Math.random() * (hi - lo); if (Math.abs(k - lastK) > (hi - lo) * .25) break; }
 lastK = k; return k;
 }
