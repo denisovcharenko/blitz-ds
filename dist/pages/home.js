@@ -163,4 +163,59 @@ g.timeline()
 masks.forEach(function (m) { var w = m.parentElement; w.__dsMask = m; io.observe(w); });
 });
 })();
+/* Works block → mosaic (variant 26). Built from the Webflow slider images, which stay in the DOM (hidden) for SEO.
+Runs at script time (before DOMContentLoaded) so the global lightbox picks up `.ds-mos > figure`. */
+(function () {
+var sec = document.querySelector('.section-case:is(.home, .eng)');
+if (!sec || sec.querySelector('.ds-mos')) return;
+var imgs = [].slice.call(sec.querySelectorAll('.slider-case .w-slide img'));
+if (imgs.length < 9) return;
+var PICK = [9, 21, 22, 19, 20, 14, 10, 13]; // slide indexes (0-based) shown in the mosaic
+var AREA = ['1/1/3/3', '1/3/2/4', '1/4/2/5', '1/5/3/7', '2/3/4/5', '3/1/4/2', '3/2/4/3', '3/5/4/6'];
+var more = sec.querySelector('.wrapper-work-button > a.button');
+var m = document.createElement('div');
+m.className = 'ds-mos';
+PICK.forEach(function (n, i) {
+var src = imgs[n] || imgs[i], f = document.createElement('figure'), im = document.createElement('img');
+im.src = src.getAttribute('src'); if (src.getAttribute('srcset')) im.setAttribute('srcset', src.getAttribute('srcset'));
+im.setAttribute('sizes', '(max-width: 767px) 50vw, 34vw'); im.alt = src.alt || ''; im.loading = 'lazy'; im.decoding = 'async';
+f.style.gridArea = AREA[i]; f.appendChild(im); m.appendChild(f);
+});
+if (more) {
+var go = document.createElement('a');
+go.className = 'ds-mos-go'; go.href = more.getAttribute('href');
+if (more.target) go.target = more.target;
+go.innerHTML = '<span>' + (more.textContent || '').trim() + '</span><i aria-hidden="true">↗</i>';
+m.appendChild(go);
+}
+var seed = 7; function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280 - .5; }
+[].forEach.call(m.children, function (c) {
+c.style.setProperty('--dx', Math.round(rnd() * 700)); c.style.setProperty('--dy', Math.round(rnd() * 420)); c.style.setProperty('--r', Math.round(rnd() * 40));
+});
+sec.querySelector('.container-case').appendChild(m);
+sec.classList.add('ds-mos-on');
+if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { m.style.setProperty('--p', 1); return; }
+var tick = 0;
+function upd() {
+tick = 0;
+var r = m.getBoundingClientRect(), k = innerWidth < 768 ? .4 : 1;
+var p = Math.max(0, Math.min(1, (innerHeight - r.top) / (innerHeight * .6))); // whole once its top is at 40% of the screen (was 15%; user, 2026-11-19: "трішки раніше")
+m.style.setProperty('--k', k); m.style.setProperty('--p', p.toFixed(3));
+}
+addEventListener('scroll', function () { if (!tick) { tick = 1; requestAnimationFrame(upd); } }, { passive: true });
+addEventListener('resize', upd); upd();
+})();
+/* Home services block: cursor tilt (desktop, hover devices only). The flip itself is CSS. */
+(function () {
+if (!window.matchMedia('(hover: hover)').matches || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+[].forEach.call(document.querySelectorAll('.ds-hsv-c'), function (c) {
+c.addEventListener('pointermove', function (e) {
+var r = c.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+c.classList.add('is-mv');
+c.style.setProperty('--ry', ((x - .5) * 12).toFixed(2) + 'deg'); c.style.setProperty('--rx', ((.5 - y) * 12).toFixed(2) + 'deg');
+c.style.setProperty('--gx', (x * 100).toFixed(1) + '%'); c.style.setProperty('--gy', (y * 100).toFixed(1) + '%');
+});
+c.addEventListener('pointerleave', function () { c.classList.remove('is-mv'); c.style.setProperty('--rx', '0deg'); c.style.setProperty('--ry', '0deg'); });
+});
+})();
 });

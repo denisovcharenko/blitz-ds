@@ -60,4 +60,14 @@ new IntersectionObserver(function (e) {
 if (e[0].isIntersecting) { var q = v.play(); if (q && q.catch) q.catch(function () {}); } else v.pause();
 }).observe(bg);
 })();
+/* /leistungen offer grid: reveal each row once as it scrolls in (CSS in leistungen.css). */
+(function () {
+var grid = document.querySelector('.section.offer .grid-serv');
+if (!grid || !('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+grid.classList.add('ds-rv');
+var io = new IntersectionObserver(function (es) {
+es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('is-in'); io.unobserve(e.target); } });
+}, { rootMargin: '0px 0px -12% 0px' });
+[].forEach.call(grid.children, function (c) { io.observe(c); });
+})();
 });
